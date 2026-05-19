@@ -1,0 +1,1813 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Crowds System · Playground</title>
+    <style>
+      :root {
+        --bg-0: #1a1208;
+        --bg-1: #2a1d10;
+        --bg-2: #3d2c1a;
+        --panel: rgba(28, 20, 12, 0.82);
+        --panel-edge: rgba(255, 196, 120, 0.20);
+        --ink: #fff2dd;
+        --ink-dim: #c9b394;
+        --accent: #ffb86b;
+        --accent-cool: #58c4ff;
+        --danger: #ff7a8a;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        font-family: 'Inter', system-ui, -apple-system, Segoe UI, sans-serif;
+        color: var(--ink);
+        background: radial-gradient(ellipse at 50% 30%, var(--bg-2) 0%, var(--bg-1) 50%, var(--bg-0) 100%);
+      }
+      #stage {
+        position: fixed; inset: 0;
+        display: block;
+        cursor: crosshair;
+      }
+      .topbar {
+        position: fixed;
+        top: 14px;
+        left: 14px;
+        right: 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        pointer-events: none;
+        z-index: 10;
+      }
+      .topbar h1 {
+        font-size: 15px;
+        margin: 0;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        background: rgba(28, 20, 12, 0.6);
+        backdrop-filter: blur(8px);
+        padding: 8px 14px;
+        border: 1px solid var(--panel-edge);
+        border-radius: 999px;
+        pointer-events: auto;
+      }
+      .topbar h1 .tag {
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 11px;
+        margin-left: 6px;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+      }
+      .topbar a.back {
+        color: var(--ink);
+        text-decoration: none;
+        background: rgba(28, 20, 12, 0.6);
+        backdrop-filter: blur(8px);
+        padding: 8px 14px;
+        border: 1px solid var(--panel-edge);
+        border-radius: 999px;
+        font-size: 12px;
+        pointer-events: auto;
+        transition: background 0.15s ease, border-color 0.15s ease;
+      }
+      .topbar a.back:hover {
+        background: rgba(255, 184, 107, 0.18);
+        border-color: rgba(255, 184, 107, 0.55);
+      }
+      .panel {
+        position: fixed;
+        top: 60px;
+        right: 14px;
+        bottom: 14px;
+        width: 330px;
+        background: var(--panel);
+        backdrop-filter: blur(14px);
+        border: 1px solid var(--panel-edge);
+        border-radius: 16px;
+        padding: 14px 14px 12px;
+        overflow-y: auto;
+        z-index: 5;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 184, 107, 0.4) transparent;
+      }
+      .panel::-webkit-scrollbar { width: 8px; }
+      .panel::-webkit-scrollbar-thumb { background: rgba(255, 184, 107, 0.3); border-radius: 8px; }
+
+      .panel h2 {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1.4px;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin: 12px 0 6px;
+        padding-bottom: 4px;
+        border-bottom: 1px dashed rgba(255, 184, 107, 0.18);
+      }
+      .panel h2:first-child { margin-top: 0; }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 60px;
+        align-items: center;
+        gap: 10px;
+        margin: 8px 0;
+      }
+      .row label {
+        font-size: 12px;
+        color: var(--ink-dim);
+        line-height: 1.2;
+      }
+      .row .val {
+        font-variant-numeric: tabular-nums;
+        font-size: 11px;
+        color: var(--ink);
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 6px;
+        padding: 3px 6px;
+        text-align: right;
+      }
+      .row input[type="range"] {
+        grid-column: 1 / 3;
+        width: 100%;
+        accent-color: var(--accent);
+        height: 4px;
+      }
+
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 7px 0;
+        font-size: 12px;
+        color: var(--ink);
+      }
+      .toggle-row input { accent-color: var(--accent); }
+
+      .btn-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin: 10px 0 4px;
+      }
+      .btn {
+        appearance: none;
+        background: rgba(255,255,255,0.06);
+        color: var(--ink);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+      }
+      .btn:hover { background: rgba(255, 184, 107, 0.18); border-color: rgba(255, 184, 107, 0.55); }
+      .btn:active { transform: translateY(1px); }
+      .btn.cool { color: var(--accent-cool); border-color: rgba(88, 196, 255, 0.4); }
+      .btn.cool:hover { background: rgba(88, 196, 255, 0.16); border-color: rgba(88, 196, 255, 0.8); }
+
+      .preset-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
+
+      /* Sprite-flip tiles --------------------------------------------------
+         Each tile shows one base sprite preview + a label like "→" or "←"
+         indicating what the renderer currently believes is its native facing.
+         Clicking a tile flips that sprite's nativeFacing live, so wrong
+         entries can be corrected without editing the source file. */
+      .sprite-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        margin: 8px 0 4px;
+      }
+      .sprite-tile {
+        position: relative;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.10);
+        border-radius: 6px;
+        padding: 4px 4px 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 64px;
+        transition: background 0.12s ease, border-color 0.12s ease;
+        overflow: hidden;
+      }
+      .sprite-tile:hover {
+        background: rgba(255, 184, 107, 0.14);
+        border-color: rgba(255, 184, 107, 0.55);
+      }
+      .sprite-tile canvas {
+        max-height: 48px;
+        width: auto;
+        display: block;
+        image-rendering: pixelated;
+      }
+      .sprite-tile .arrow {
+        position: absolute;
+        bottom: 2px;
+        left: 0; right: 0;
+        text-align: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--accent);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.4px;
+        pointer-events: none;
+      }
+      .sprite-tile.active {
+        background: rgba(88, 196, 255, 0.18);
+        border-color: rgba(88, 196, 255, 0.75);
+      }
+      .sprite-tile .idx {
+        position: absolute;
+        top: 2px;
+        left: 4px;
+        font-size: 9px;
+        color: var(--ink-dim);
+        font-variant-numeric: tabular-nums;
+      }
+
+      select {
+        appearance: none;
+        background: rgba(255,255,255,0.06);
+        color: var(--ink);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        width: 100%;
+      }
+
+      .stat {
+        font-size: 11px;
+        color: var(--ink-dim);
+        text-align: center;
+        margin-top: 8px;
+        font-variant-numeric: tabular-nums;
+      }
+      .note {
+        font-size: 11px;
+        color: var(--ink-dim);
+        background: rgba(255, 184, 107, 0.06);
+        border-left: 2px solid rgba(255, 184, 107, 0.5);
+        padding: 8px 10px;
+        border-radius: 4px;
+        margin-top: 10px;
+        line-height: 1.45;
+      }
+      .note code {
+        background: rgba(255,255,255,0.08);
+        border-radius: 3px;
+        padding: 1px 4px;
+        font-size: 10.5px;
+      }
+
+      .legend {
+        position: fixed;
+        bottom: 14px;
+        left: 14px;
+        background: rgba(28, 20, 12, 0.6);
+        backdrop-filter: blur(8px);
+        border: 1px solid var(--panel-edge);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 11px;
+        color: var(--ink-dim);
+        line-height: 1.55;
+        z-index: 5;
+      }
+      .legend kbd {
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 4px;
+        padding: 1px 6px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 10px;
+        color: var(--ink);
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+
+    <div class="topbar">
+      <h1 id="title">Crowds System <span class="tag" id="title-tag">shader walk · stamped instances</span></h1>
+      <a class="back" href="https://github.com/boona13/crowds-system-js" target="_blank" rel="noopener">source on github →</a>
+    </div>
+
+    <div class="legend">
+      <strong style="color:var(--ink)">Modes</strong><br/>
+      <kbd>1</kbd> wander &nbsp; <kbd>2</kbd> cross &nbsp; <kbd>3</kbd> circle &nbsp; <kbd>4</kbd> follow<br/>
+      <kbd>space</kbd> pause/play &nbsp; <kbd>R</kbd> respawn &nbsp; <kbd>D</kbd> debug
+    </div>
+
+    <aside class="panel" id="panel">
+      <h2>Crowd</h2>
+      <div class="row">
+        <label>People count</label>
+        <span class="val" id="v-count">200</span>
+        <input type="range" id="count" min="1" max="2000" step="1" value="200" />
+      </div>
+      <div class="row">
+        <label>Person size (px)</label>
+        <span class="val" id="v-size">52</span>
+        <input type="range" id="size" min="16" max="160" step="1" value="52" />
+      </div>
+      <div class="row">
+        <label>Size variance</label>
+        <span class="val" id="v-sizeVar">0.18</span>
+        <input type="range" id="sizeVar" min="0" max="0.5" step="0.01" value="0.18" />
+      </div>
+      <div class="row">
+        <label>Shirt palette size</label>
+        <span class="val" id="v-hues">8</span>
+        <input type="range" id="hues" min="1" max="16" step="1" value="8" />
+      </div>
+      <div class="row">
+        <label>Hair palette size</label>
+        <span class="val" id="v-hairColors">5</span>
+        <input type="range" id="hairColors" min="1" max="8" step="1" value="5" />
+      </div>
+      <div class="row">
+        <label>Shadow depth</label>
+        <span class="val" id="v-shadow">0.40</span>
+        <input type="range" id="shadow" min="0" max="1" step="0.01" value="0.40" />
+      </div>
+
+      <h2>Characters <span style="opacity:.55;font-weight:500;text-transform:none;letter-spacing:.4px">— 4-direction sprite sets</span></h2>
+      <div class="sprite-grid" id="sprite-grid"></div>
+      <div class="row" style="grid-template-columns: 1fr;">
+        <label>Isolate <span style="opacity:.5">(show only one character set)</span></label>
+        <select id="isolateBase">
+          <option value="-1">All characters</option>
+        </select>
+      </div>
+
+      <h2>Presets</h2>
+      <div class="preset-row">
+        <button class="btn" data-preset="stroll">Stroll</button>
+        <button class="btn" data-preset="brisk">Brisk</button>
+        <button class="btn" data-preset="rush">Rush</button>
+      </div>
+
+      <h2>Walk gait</h2>
+      <div class="row">
+        <label>Slices <span style="opacity:.5">(rows per body)</span></label>
+        <span class="val" id="v-slices">10</span>
+        <input type="range" id="slices" min="2" max="32" step="1" value="10" />
+      </div>
+      <div class="row">
+        <label>Bob amplitude (px)</label>
+        <span class="val" id="v-bob">2.4</span>
+        <input type="range" id="bob" min="0" max="10" step="0.05" value="2.4" />
+      </div>
+      <div class="row">
+        <label>Body sway (px)</label>
+        <span class="val" id="v-sway">1.4</span>
+        <input type="range" id="sway" min="0" max="8" step="0.05" value="1.4" />
+      </div>
+      <div class="row">
+        <label>Head counter-sway</label>
+        <span class="val" id="v-headSway">0.45</span>
+        <input type="range" id="headSway" min="0" max="1.5" step="0.01" value="0.45" />
+      </div>
+      <div class="row">
+        <label>Leg swing (px)</label>
+        <span class="val" id="v-leg">3.2</span>
+        <input type="range" id="leg" min="0" max="10" step="0.05" value="3.2" />
+      </div>
+      <div class="row">
+        <label>Foot-plant squash</label>
+        <span class="val" id="v-squash">0.060</span>
+        <input type="range" id="squash" min="0" max="0.25" step="0.001" value="0.060" />
+      </div>
+      <div class="row">
+        <label>Lean into direction</label>
+        <span class="val" id="v-lean">0.07</span>
+        <input type="range" id="lean" min="0" max="0.4" step="0.005" value="0.07" />
+      </div>
+      <div class="row">
+        <label>Hip line <span style="opacity:.5">(below = legs)</span></label>
+        <span class="val" id="v-hipLine">0.62</span>
+        <input type="range" id="hipLine" min="0.3" max="0.85" step="0.01" value="0.62" />
+      </div>
+      <div class="row">
+        <label>Cadence (steps / sec)</label>
+        <span class="val" id="v-cadence">1.7</span>
+        <input type="range" id="cadence" min="0.4" max="4" step="0.05" value="1.7" />
+      </div>
+      <div class="row">
+        <label>Cadence variance</label>
+        <span class="val" id="v-cadenceVar">0.25</span>
+        <input type="range" id="cadenceVar" min="0" max="0.6" step="0.01" value="0.25" />
+      </div>
+
+      <h2>Movement</h2>
+      <div class="row">
+        <label>Forward speed (px/s)</label>
+        <span class="val" id="v-speed">45</span>
+        <input type="range" id="speed" min="0" max="200" step="1" value="45" />
+      </div>
+      <div class="row">
+        <label>Turn rate (rad/s)</label>
+        <span class="val" id="v-turn">2.0</span>
+        <input type="range" id="turn" min="0.2" max="8" step="0.1" value="2.0" />
+      </div>
+      <div class="row">
+        <label>Speed variance</label>
+        <span class="val" id="v-speedVar">0.25</span>
+        <input type="range" id="speedVar" min="0" max="0.6" step="0.01" value="0.25" />
+      </div>
+
+      <h2>Scene</h2>
+      <div class="row" style="grid-template-columns: 1fr;">
+        <label>Movement mode</label>
+        <select id="mode">
+          <option value="wander">Wander (random targets)</option>
+          <option value="cross">Crossroads (edge to edge)</option>
+          <option value="circle">Circle (orbit center)</option>
+          <option value="follow">Follow cursor (mob)</option>
+          <option value="static">Static (idle bob)</option>
+        </select>
+      </div>
+      <div class="row" style="grid-template-columns: 1fr;">
+        <label>Ground</label>
+        <select id="ground">
+          <option value="plaza">Plaza (warm stone)</option>
+          <option value="dirt">Dirt path</option>
+          <option value="grass">Grass</option>
+          <option value="dark">Dark void</option>
+        </select>
+      </div>
+      <div class="toggle-row"><label><input type="checkbox" id="ysort" checked /> Y-sort (depth order)</label></div>
+      <div class="toggle-row"><label><input type="checkbox" id="pixelate" /> Pixelated (no smoothing)</label></div>
+      <div class="toggle-row"><label><input type="checkbox" id="debug" /> Debug rings</label></div>
+
+      <div class="btn-row">
+        <button class="btn" id="btn-pause">Pause</button>
+        <button class="btn cool" id="btn-reset">Respawn</button>
+      </div>
+
+      <div class="note">
+        <strong>How it works:</strong> all people share <code>N</code> base sprites pre-tinted with <code>M</code> shirt hues (so the GPU/2D context only deals with <code>N×M</code> cached canvases). Each person's walk is procedural: <em>bob</em>, <em>sway</em>, <em>leg swing</em>, <em>squash</em>, <em>lean</em>. No spritesheet, no skeleton, no shaders required for this Canvas2D demo — yet the same trick ports 1:1 to a WebGL instanced quad with vertex-shader deformation for the real game.
+      </div>
+
+      <div class="stat" id="stat">— fps</div>
+    </aside>
+
+    <script>
+    (() => {
+      "use strict";
+
+      // ---------------------------------------------------------------------
+      // Canvas + DPR
+      // ---------------------------------------------------------------------
+      const canvas = document.getElementById("stage");
+      const ctx = canvas.getContext("2d");
+      let dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      let W = 0, H = 0;
+      function resize() {
+        dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+        W = window.innerWidth;
+        H = window.innerHeight;
+        canvas.width = Math.floor(W * dpr);
+        canvas.height = Math.floor(H * dpr);
+        canvas.style.width = W + "px";
+        canvas.style.height = H + "px";
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      window.addEventListener("resize", resize);
+      resize();
+
+      // ---------------------------------------------------------------------
+      // Controls model — every tweakable param lives here so the renderer
+      // never reads from the DOM during a frame.
+      // ---------------------------------------------------------------------
+      const P = {
+        count: 200,
+        size: 52,
+        sizeVar: 0.18,
+        hues: 8,
+        hairColors: 5,
+        shadow: 0.40,
+
+        slices: 10,
+        bob: 2.4,
+        sway: 1.4,
+        headSway: 0.45,
+        leg: 3.2,
+        squash: 0.060,
+        lean: 0.07,
+        hipLine: 0.62,
+        cadence: 1.7,
+        cadenceVar: 0.25,
+
+        speed: 45,
+        turn: 2.0,
+        speedVar: 0.25,
+
+        mode: "wander",
+        ground: "plaza",
+        ysort: true,
+        pixelate: false,
+        debug: false,
+        paused: false,
+
+        // -1 = pick from all loaded sprites; >=0 = lock every person to one
+        // base sprite (used for diagnosing which sprite faces the wrong way).
+        isolateBase: -1,
+      };
+
+      const PRESETS = {
+        // Lazy afternoon in the village square — soft bob, slow stride.
+        stroll: {
+          bob: 1.6, sway: 1.1, headSway: 0.40, leg: 2.4, squash: 0.04,
+          lean: 0.04, cadence: 1.2, cadenceVar: 0.30,
+          speed: 26, turn: 1.4, speedVar: 0.30,
+        },
+        // Default-ish: people on errands, walking with purpose.
+        brisk: {
+          bob: 2.4, sway: 1.4, headSway: 0.45, leg: 3.2, squash: 0.06,
+          lean: 0.07, cadence: 1.7, cadenceVar: 0.25,
+          speed: 45, turn: 2.0, speedVar: 0.25,
+        },
+        // Rush hour: half-jog, more body lean, bigger bob.
+        rush: {
+          bob: 3.8, sway: 1.8, headSway: 0.55, leg: 4.6, squash: 0.10,
+          lean: 0.14, cadence: 2.6, cadenceVar: 0.18,
+          speed: 95, turn: 3.0, speedVar: 0.20,
+        },
+      };
+
+      function bindRange(id, key, isInt = false) {
+        const el = document.getElementById(id);
+        const lbl = document.getElementById("v-" + id);
+        const apply = () => {
+          P[key] = isInt ? parseInt(el.value, 10) : parseFloat(el.value);
+          lbl.textContent = isInt ? P[key] : (Math.abs(P[key]) < 1 ? P[key].toFixed(3) : P[key].toFixed(2));
+        };
+        el.addEventListener("input", apply);
+        apply();
+        return { el, lbl, apply };
+      }
+      function bindCheckbox(id, key) {
+        const el = document.getElementById(id);
+        el.addEventListener("input", () => { P[key] = el.checked; });
+        P[key] = el.checked;
+      }
+      const sliders = {
+        count: bindRange("count", "count", true),
+        size: bindRange("size", "size", true),
+        sizeVar: bindRange("sizeVar", "sizeVar"),
+        hues: bindRange("hues", "hues", true),
+        hairColors: bindRange("hairColors", "hairColors", true),
+        shadow: bindRange("shadow", "shadow"),
+        slices: bindRange("slices", "slices", true),
+        bob: bindRange("bob", "bob"),
+        sway: bindRange("sway", "sway"),
+        headSway: bindRange("headSway", "headSway"),
+        leg: bindRange("leg", "leg"),
+        squash: bindRange("squash", "squash"),
+        lean: bindRange("lean", "lean"),
+        hipLine: bindRange("hipLine", "hipLine"),
+        cadence: bindRange("cadence", "cadence"),
+        cadenceVar: bindRange("cadenceVar", "cadenceVar"),
+        speed: bindRange("speed", "speed"),
+        turn: bindRange("turn", "turn"),
+        speedVar: bindRange("speedVar", "speedVar"),
+      };
+      bindCheckbox("ysort", "ysort");
+      bindCheckbox("pixelate", "pixelate");
+      bindCheckbox("debug", "debug");
+
+      document.getElementById("mode").addEventListener("change", (e) => { P.mode = e.target.value; });
+      document.getElementById("ground").addEventListener("change", (e) => { P.ground = e.target.value; });
+      document.getElementById("btn-pause").addEventListener("click", () => {
+        P.paused = !P.paused;
+        document.getElementById("btn-pause").textContent = P.paused ? "Play" : "Pause";
+      });
+      document.getElementById("btn-reset").addEventListener("click", () => spawnCrowd());
+
+      document.querySelectorAll(".preset-row .btn").forEach(b => {
+        b.addEventListener("click", () => applyPreset(b.dataset.preset));
+      });
+      function applyPreset(name) {
+        const p = PRESETS[name]; if (!p) return;
+        for (const k of Object.keys(p)) {
+          P[k] = p[k];
+          if (sliders[k]) {
+            sliders[k].el.value = p[k];
+            sliders[k].apply();
+          }
+        }
+      }
+
+      // Re-spawn when crowd-defining sliders settle on a new value.
+      sliders.count.el.addEventListener("change", spawnCrowd);
+      sliders.hues.el.addEventListener("change", () => { rebakeVariants(); });
+      sliders.hairColors.el.addEventListener("change", () => { rebakeVariants(); });
+
+      // ---------------------------------------------------------------------
+      // Mouse
+      // ---------------------------------------------------------------------
+      const mouse = { x: W * 0.5, y: H * 0.5 };
+      window.addEventListener("mousemove", (e) => {
+        mouse.x = e.clientX; mouse.y = e.clientY;
+      });
+
+      // ---------------------------------------------------------------------
+      // Keyboard
+      // ---------------------------------------------------------------------
+      window.addEventListener("keydown", (e) => {
+        if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+        if (e.code === "Space") {
+          e.preventDefault();
+          document.getElementById("btn-pause").click();
+        }
+        else if (e.key === "1") { P.mode = "wander"; document.getElementById("mode").value = "wander"; }
+        else if (e.key === "2") { P.mode = "cross"; document.getElementById("mode").value = "cross"; respawnIfCross(); }
+        else if (e.key === "3") { P.mode = "circle"; document.getElementById("mode").value = "circle"; }
+        else if (e.key === "4") { P.mode = "follow"; document.getElementById("mode").value = "follow"; }
+        else if (e.key.toLowerCase() === "r") { spawnCrowd(); }
+        else if (e.key.toLowerCase() === "d") {
+          P.debug = !P.debug;
+          document.getElementById("debug").checked = P.debug;
+        }
+      });
+
+      // ---------------------------------------------------------------------
+      // Character sprites
+      // ---------------------------------------------------------------------
+      // We use a small library of chibi poses. Each person picks one base
+      // pose for their entire life. The walk illusion comes from procedural
+      // deformation on top of the static pose, so a single still sprite is
+      // enough — no walk-cycle spritesheet required.
+      //
+      // IMPORTANT: each sprite has its own "native facing" — the direction
+      // its pixels naturally face. If this is wrong, the character will
+      // appear to walk backward (face one way while moving the opposite).
+      // +1 = naturally faces RIGHT, -1 = naturally faces LEFT. For mostly
+      // symmetric / front-facing poses, either value is acceptable.
+      //
+      // At render time the on-screen flip is:
+      //     scaleX = desiredFacing × nativeFacing
+      // so a person whose motion points right (desiredFacing=+1) and whose
+      // chosen sprite natively faces left (native=-1) gets scaleX=-1 (a
+      // horizontal mirror), which makes them appear to face right.
+      // ---------------------------------------------------------------------
+      // 4-directional character sets.
+      //
+      // A real top-down crowd needs to show the character's FRONT when walking
+      // toward the camera, their BACK when walking away, and a SIDE view when
+      // moving horizontally. The renderer picks the correct view from the
+      // person's heading at draw time, so every walker actually faces their
+      // direction of motion (no more "back of the head" walking toward you).
+      //
+      // Each sprite in a set is already in its natural orientation:
+      //   • right.png natively faces right
+      //   • left.png  natively faces left   (just the mirrored sibling)
+      //   • down.png  faces the camera
+      //   • up.png    shows the back
+      // So we don't need any per-sprite "flip" bookkeeping. The dropped
+      // NATIVE_FACING / scale(flip, 1) machinery from the previous iteration
+      // is unnecessary now and was removed.
+      //
+      // Add a new set by providing the same four cardinal views. The crowd
+      // system will randomize among sets and still apply shirt/hair palettes
+      // at bake time.
+      // ---------------------------------------------------------------------
+      const VIEW_KEYS = ["down", "up", "right", "left"];
+
+      const CHARACTER_SETS = [
+        {
+          name:  "townie",
+          down:  "sprites_sp1/characters/characters_08.png", // front: face visible
+          up:    "sprites_sp1/characters/characters_04.png", // back: hair tuft visible
+          right: "sprites_sp1/characters/characters_22.png", // right-facing side
+          left:  "sprites_sp1/characters/characters_13.png", // left-facing side
+        },
+        {
+          name:  "little girl",
+          down:  "charachters/little-girl/little-girl-down.png",
+          up:    "charachters/little-girl/little-girl-up.png",
+          right: "charachters/little-girl/little-girl-right.png",
+          left:  "charachters/little-girl/little-girl-left.png",
+        },
+        {
+          name:  "dad",
+          down:  "charachters/man-dad/man-dad-down.png",
+          up:    "charachters/man-dad/man-dad-up.png",
+          right: "charachters/man-dad/man-dad-right.png",
+          left:  "charachters/man-dad/man-dad-left.png",
+        },
+        {
+          name:  "grandfather",
+          down:  "charachters/man-grandfather/man-grandfather-down.png",
+          up:    "charachters/man-grandfather/man-grandfather-up.png",
+          right: "charachters/man-grandfather/man-grandfather-right.png",
+          left:  "charachters/man-grandfather/man-grandfather-left.png",
+        },
+        {
+          name:  "grandmother",
+          down:  "charachters/woman-grandmother/woman-grandmother-down.png",
+          up:    "charachters/woman-grandmother/woman-grandmother-up.png",
+          right: "charachters/woman-grandmother/woman-grandmother-right.png",
+          left:  "charachters/woman-grandmother/woman-grandmother-left.png",
+        },
+      ];
+
+      // A perceptually-spaced shirt palette. The first entry (~195°) is
+      // intentionally close to the source-art hue so "no recolor" is one of
+      // the variants and feels native to the existing tilesets.
+      const SHIRT_PALETTE = [
+        { hue: 195, sat: null }, // original cyan-blue
+        { hue:   0, sat: null }, // red
+        { hue:  18, sat: null }, // orange
+        { hue:  45, sat: null }, // mustard
+        { hue: 105, sat: null }, // grass green
+        { hue: 145, sat: null }, // teal
+        { hue: 260, sat: null }, // purple
+        { hue: 320, sat: null }, // pink
+        { hue:  75, sat: null }, // lime
+        { hue: 220, sat: null }, // royal blue
+        { hue: 300, sat: null }, // magenta
+        { hue:  10, sat: null }, // brick
+        { hue:  90, sat: null }, // olive-green
+        { hue: 170, sat: null }, // turquoise
+        { hue: 240, sat: null }, // indigo
+        { hue: 350, sat: null }, // rose
+      ];
+
+      // Hair palette. First entry preserves the original brown hair; the rest
+      // hue-shift only pixels detected as hair (dark/warm browns), leaving
+      // skin, outlines, pants, and shirt pixels alone.
+      const HAIR_PALETTE = [
+        { name: "original", hue: null, sat: null, valMul: 1.00 },
+        { name: "dark",     hue: 28,   sat: 0.35, valMul: 0.62 },
+        { name: "blond",    hue: 44,   sat: 0.56, valMul: 1.18 },
+        { name: "red",      hue: 12,   sat: 0.68, valMul: 0.98 },
+        { name: "black",    hue: 220,  sat: 0.20, valMul: 0.50 },
+        { name: "silver",   hue: 215,  sat: 0.10, valMul: 1.18 },
+        { name: "auburn",   hue: 20,   sat: 0.62, valMul: 0.82 },
+        { name: "chestnut", hue: 34,   sat: 0.48, valMul: 0.88 },
+      ];
+
+      // Loaded source HTMLImageElements per set/view:
+      //     sourceImages[setIdx][viewKey] = { img, aspect }
+      // and pre-baked hue-shifted variants per set/view/hue:
+      //     variants[setIdx][viewKey][hueIdx] = HTMLCanvasElement
+      const sourceImages = [];
+      const variants     = [];
+
+      // Total expected images = setCount * 4 views
+      let imagesNeeded = 0;
+      let imagesLoaded = 0;
+
+      function onAllSpritesReady() {
+        rebakeVariants();
+        buildSpriteUI();
+        spawnCrowd();
+      }
+
+      function loadAllSprites() {
+        imagesNeeded = CHARACTER_SETS.length * VIEW_KEYS.length;
+        imagesLoaded = 0;
+
+        for (let s = 0; s < CHARACTER_SETS.length; s++) {
+          const set = CHARACTER_SETS[s];
+          sourceImages[s] = {};
+
+          for (const view of VIEW_KEYS) {
+            const src = set[view];
+            // No source listed for this view → skip; the draw code falls
+            // back to a present view (see pickViewSprite).
+            if (!src) {
+              imagesLoaded++;
+              if (imagesLoaded === imagesNeeded) onAllSpritesReady();
+              continue;
+            }
+
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            const finish = (ok) => {
+              if (ok) {
+                sourceImages[s][view] = {
+                  img,
+                  aspect: img.naturalWidth / img.naturalHeight,
+                };
+              } else {
+                console.warn("[crowd] failed to load", src);
+              }
+              imagesLoaded++;
+              if (imagesLoaded === imagesNeeded) onAllSpritesReady();
+            };
+            img.onload  = () => finish(true);
+            img.onerror = () => finish(false);
+            img.src = src;
+          }
+        }
+      }
+
+      // Pick the loaded sprite for (setIdx, viewKey), or fall back to any
+      // other view in the same set if that one didn't load. Used by the
+      // hue-bake step and as a safety net inside the renderer.
+      function pickViewSprite(setIdx, viewKey) {
+        const set = sourceImages[setIdx];
+        if (!set) return null;
+        if (set[viewKey]) return set[viewKey];
+        for (const v of VIEW_KEYS) {
+          if (set[v]) return set[v];
+        }
+        return null;
+      }
+
+      // ---------------------------------------------------------------------
+      // Character-set preview UI — for each character set, render a small
+      // 4-view strip (down / up / right / left). This makes the directional
+      // sprite mapping visible in the panel: a wrong assignment is obvious
+      // because the wrong view will show the wrong silhouette.
+      // ---------------------------------------------------------------------
+      const VIEW_ARROW = { down: "↓", up: "↑", right: "→", left: "←" };
+      function buildSpriteUI() {
+        const grid = document.getElementById("sprite-grid");
+        const isolateSel = document.getElementById("isolateBase");
+        if (!grid || !isolateSel) return;
+
+        grid.innerHTML = "";
+        // Reset the isolate dropdown options (keeps "all sprites" first).
+        while (isolateSel.options.length > 1) isolateSel.remove(1);
+
+        for (let s = 0; s < CHARACTER_SETS.length; s++) {
+          const set = CHARACTER_SETS[s];
+
+          // Isolate dropdown option — "Only character #s"
+          const opt = document.createElement("option");
+          opt.value = String(s);
+          opt.textContent = "Only character #" + s + (set.name ? " (" + set.name + ")" : "");
+          isolateSel.appendChild(opt);
+
+          // Per-character row label
+          const heading = document.createElement("div");
+          heading.style.gridColumn = "1 / -1";
+          heading.style.fontSize = "11px";
+          heading.style.color = "var(--ink-dim)";
+          heading.style.letterSpacing = "0.5px";
+          heading.style.margin = "4px 0 0";
+          heading.textContent = "Character #" + s + (set.name ? " — " + set.name : "");
+          grid.appendChild(heading);
+
+          // One tile per view (down/up/right/left)
+          for (const view of VIEW_KEYS) {
+            const tile = document.createElement("div");
+            tile.className = "sprite-tile";
+            tile.dataset.set  = String(s);
+            tile.dataset.view = view;
+
+            const idxLbl = document.createElement("span");
+            idxLbl.className = "idx";
+            idxLbl.textContent = view;
+            tile.appendChild(idxLbl);
+
+            const arrow = document.createElement("span");
+            arrow.className = "arrow";
+            arrow.textContent = VIEW_ARROW[view] + " " + view;
+            tile.appendChild(arrow);
+
+            const src = (sourceImages[s] || {})[view];
+            if (src) {
+              const c = document.createElement("canvas");
+              const targetH = 48;
+              const aspect = src.img.naturalWidth / src.img.naturalHeight;
+              c.width  = Math.max(8, Math.round(targetH * aspect));
+              c.height = targetH;
+              const g = c.getContext("2d");
+              g.imageSmoothingEnabled = true;
+              g.imageSmoothingQuality = "high";
+              g.drawImage(src.img, 0, 0, c.width, c.height);
+              tile.appendChild(c);
+            } else {
+              const miss = document.createElement("span");
+              miss.style.fontSize  = "10px";
+              miss.style.color     = "rgba(255, 120, 120, 0.85)";
+              miss.style.textAlign = "center";
+              miss.textContent = "missing";
+              tile.appendChild(miss);
+            }
+
+            grid.appendChild(tile);
+          }
+        }
+      }
+
+      // Isolate dropdown — pin every person to one character set. Useful
+      // for inspecting a single character's animation without the rest of
+      // the crowd cluttering the view.
+      document.getElementById("isolateBase").addEventListener("change", (e) => {
+        P.isolateBase = parseInt(e.target.value, 10);
+        if (P.isolateBase >= 0) {
+          for (const p of people) p.setIdx = P.isolateBase;
+        } else {
+          for (const p of people) {
+            p.setIdx = (Math.random() * Math.max(1, CHARACTER_SETS.length)) | 0;
+          }
+        }
+      });
+
+      // ---------------------------------------------------------------------
+      // Hue baking — for each base sprite, produce P.hues recolored copies.
+      // We only touch pixels that look like "shirt" (highly saturated blue
+      // family). Hair, skin, pants, and outlines are preserved so people
+      // still look like the same character — just wearing different shirts.
+      // This is the 2D equivalent of an instanced "swatch index" lookup in
+      // a real GPU crowd system.
+      // ---------------------------------------------------------------------
+      function rgbToHsv(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const mx = Math.max(r, g, b);
+        const mn = Math.min(r, g, b);
+        const d = mx - mn;
+        let h = 0;
+        if (d !== 0) {
+          if (mx === r) h = ((g - b) / d) % 6;
+          else if (mx === g) h = ((b - r) / d) + 2;
+          else h = ((r - g) / d) + 4;
+          h *= 60;
+          if (h < 0) h += 360;
+        }
+        const s = mx === 0 ? 0 : d / mx;
+        const v = mx;
+        return [h, s, v];
+      }
+      function hsvToRgb(h, s, v) {
+        h = ((h % 360) + 360) % 360;
+        const c = v * s;
+        const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        const m = v - c;
+        let r = 0, g = 0, b = 0;
+        if (h < 60)      { r = c; g = x; b = 0; }
+        else if (h < 120){ r = x; g = c; b = 0; }
+        else if (h < 180){ r = 0; g = c; b = x; }
+        else if (h < 240){ r = 0; g = x; b = c; }
+        else if (h < 300){ r = x; g = 0; b = c; }
+        else             { r = c; g = 0; b = x; }
+        return [(r + m) * 255 | 0, (g + m) * 255 | 0, (b + m) * 255 | 0];
+      }
+
+      function bakeOne(baseImg, shirtHue, hairTone) {
+        // The source PNGs can be 500px+ tall. The playground never needs
+        // that much source resolution (person size defaults around 52px and
+        // caps at 160px), so bake to a smaller working canvas to keep the
+        // shirt×hair×direction cache fast and memory-friendly.
+        const srcW = baseImg.naturalWidth, srcH = baseImg.naturalHeight;
+        const bakeH = Math.min(srcH, 220);
+        const bakeW = Math.max(1, Math.round(srcW * (bakeH / srcH)));
+        const w = bakeW, h = bakeH;
+        const c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        const g = c.getContext("2d");
+        g.imageSmoothingEnabled = true;
+        g.imageSmoothingQuality = "high";
+        g.drawImage(baseImg, 0, 0, w, h);
+        const recolorShirt = Math.abs(shirtHue - 195) >= 0.5;
+        const recolorHair  = !!(hairTone && hairTone.hue !== null);
+        if (!recolorShirt && !recolorHair) return c;
+
+        const img = g.getImageData(0, 0, w, h);
+        const d = img.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const a = d[i + 3];
+          if (a < 8) continue;
+          const r = d[i], gr = d[i + 1], bl = d[i + 2];
+          const [hh, ss, vv] = rgbToHsv(r, gr, bl);
+          const y = ((i / 4) / w) | 0;
+          // Shirt detection: saturated blue/cyan, mid-to-bright value.
+          // Tight enough to spare the dark navy pants and the brown hair.
+          if (recolorShirt && hh >= 170 && hh <= 220 && ss >= 0.30 && vv >= 0.32) {
+            const [nr, ng, nb] = hsvToRgb(shirtHue, ss, vv);
+            d[i] = nr; d[i + 1] = ng; d[i + 2] = nb;
+            continue;
+          }
+
+          // Hair detection: warm brown/orange, darker than skin. Skin shares
+          // a warm hue, so the value/saturation guards do most of the work.
+          const looksLikeHair =
+            recolorHair &&
+            y < h * 0.62 &&
+            hh >= 8 && hh <= 54 &&
+            ss >= 0.24 &&
+            vv >= 0.16 && vv <= 0.70 &&
+            !(vv > 0.52 && ss < 0.46) &&
+            // New character outfits include red/brown cloth near the upper
+            // body. Keep those warmer, brighter pixels intact; real hair in
+            // these sprites is usually darker or higher on the head.
+            !(y > h * 0.46 && vv > 0.48 && hh < 22);
+
+          if (looksLikeHair) {
+            const ns = hairTone.sat === null ? ss : Math.max(0, Math.min(1, hairTone.sat));
+            const nv = Math.max(0, Math.min(1, vv * hairTone.valMul));
+            const [nr, ng, nb] = hsvToRgb(hairTone.hue, ns, nv);
+            d[i] = nr; d[i + 1] = ng; d[i + 2] = nb;
+          }
+        }
+        g.putImageData(img, 0, 0);
+        return c;
+      }
+
+      function rebakeVariants() {
+        variants.length = 0;
+        const shirtCount = Math.min(P.hues, SHIRT_PALETTE.length);
+        const hairCount  = Math.min(P.hairColors, HAIR_PALETTE.length);
+
+        // variants[setIdx][viewKey] = flat [shirt0/hair0, shirt0/hair1, ...]
+        for (let s = 0; s < CHARACTER_SETS.length; s++) {
+          const setBakes = {};
+          for (const view of VIEW_KEYS) {
+            const src = (sourceImages[s] || {})[view];
+            if (!src) { setBakes[view] = []; continue; }
+            const row = [];
+            for (let shirt = 0; shirt < shirtCount; shirt++) {
+              for (let hair = 0; hair < hairCount; hair++) {
+                row.push(bakeOne(src.img, SHIRT_PALETTE[shirt].hue, HAIR_PALETTE[hair]));
+              }
+            }
+            setBakes[view] = row;
+          }
+          variants.push(setBakes);
+        }
+
+        // Cap each person's palette indices so nobody points at a missing
+        // shirt/hair combination after a slider changes.
+        if (typeof people !== "undefined") {
+          for (const p of people) {
+            if (p.hueIdx >= shirtCount) p.hueIdx = (Math.random() * shirtCount) | 0;
+            if (p.hairIdx >= hairCount) p.hairIdx = (Math.random() * hairCount) | 0;
+          }
+        }
+      }
+
+      // ---------------------------------------------------------------------
+      // Person entity
+      // ---------------------------------------------------------------------
+      const people = [];
+
+      function makePerson(spawnEdge = false) {
+        const setCount = Math.max(1, CHARACTER_SETS.length);
+        const setIdx = (P.isolateBase >= 0 && P.isolateBase < setCount)
+          ? P.isolateBase
+          : (Math.random() * setCount) | 0;
+        const hueLimit = Math.max(1, Math.min(P.hues, SHIRT_PALETTE.length));
+        const hairLimit = Math.max(1, Math.min(P.hairColors, HAIR_PALETTE.length));
+        const hueIdx = (Math.random() * hueLimit) | 0;
+        const hairIdx = (Math.random() * hairLimit) | 0;
+        const sizeMul = 1 + (Math.random() * 2 - 1) * P.sizeVar;
+        const cadenceMul = 1 + (Math.random() * 2 - 1) * P.cadenceVar;
+        const speedMul = 1 + (Math.random() * 2 - 1) * P.speedVar;
+        let angle = Math.random() * Math.PI * 2;
+
+        let x, y;
+        let tx, ty;
+        // _crossTargetSet starts undefined; gets set to true here only when
+        // we're spawning into the cross flow with a pre-baked direction.
+        let crossTargetSet = false;
+
+        if (spawnEdge && P.mode === "cross") {
+          // Pre-assign a lane direction: pick an edge, spawn just off the
+          // canvas there, point the heading INTO the screen, and set a
+          // target on the opposite side. The new person can start walking
+          // immediately — no 180° turn-around at the spawn edge.
+          const edge = (Math.random() * 4) | 0;
+          // Spread the spawn position over a 60-px-wide band so we don't
+          // get a visible line of newcomers right on the border.
+          const offIn = -30 - Math.random() * 90; // -30 .. -120
+          if (edge === 0) {        // left → right
+            x = offIn;
+            y = Math.random() * H;
+            tx = W - offIn; ty = Math.random() * H;
+            angle = 0;
+          } else if (edge === 1) { // right → left
+            x = W - offIn;
+            y = Math.random() * H;
+            tx = offIn; ty = Math.random() * H;
+            angle = Math.PI;
+          } else if (edge === 2) { // top → bottom
+            x = Math.random() * W;
+            y = offIn;
+            tx = Math.random() * W; ty = H - offIn;
+            angle = Math.PI / 2;
+          } else {                 // bottom → top
+            x = Math.random() * W;
+            y = H - offIn;
+            tx = Math.random() * W; ty = offIn;
+            angle = -Math.PI / 2;
+          }
+          crossTargetSet = true;
+        } else {
+          x = Math.random() * W;
+          y = Math.random() * H;
+          tx = x; ty = y;
+        }
+
+        return {
+          x, y,
+          heading: angle,
+          angularVel: 0,
+          setIdx,
+          hueIdx,
+          hairIdx,
+          sizeMul,
+          cadenceMul,
+          speedMul,
+          phase: Math.random() * Math.PI * 2,
+          target: { x: tx, y: ty },
+          nextRetarget: 0,
+          circleOffset: Math.random() * Math.PI * 2,
+          // Sticky view choice — recomputed each frame in updatePerson, but
+          // initialised here so the very first draw uses the correct sprite
+          // for the spawn direction.
+          view: pickViewFromHeading(angle, null),
+          _crossTargetSet: crossTargetSet,
+        };
+      }
+
+      // ---------------------------------------------------------------------
+      // Heading → view selector
+      //
+      // Pick one of "down" / "up" / "right" / "left" from a heading angle.
+      // Strategy:
+      //   • Vertical-bias mode keeps the side view unless motion is very
+      //     vertical (configurable below), because side profiles read more
+      //     dynamically for diagonal movement in top-down games.
+      //   • Hysteresis: once a view is chosen, the new view must clear a
+      //     small dominance margin to take over. Prevents flicker when a
+      //     character's heading wobbles right at the threshold.
+      // ---------------------------------------------------------------------
+      const VIEW_SWITCH_HYSTERESIS = 0.08;
+      function pickViewFromHeading(heading, currentView) {
+        const sinH = Math.sin(heading);
+        const cosH = Math.cos(heading);
+
+        // How much more vertical must motion be than horizontal to switch
+        // to a front/back view. Lower = use front/back more often.
+        const verticalBias = 0.85;
+        const verticalStrength   = Math.abs(sinH) - Math.abs(cosH) * verticalBias;
+        const horizontalStrength = Math.abs(cosH) - Math.abs(sinH) * verticalBias;
+
+        let candidate;
+        if (verticalStrength > horizontalStrength) {
+          candidate = sinH > 0 ? "down" : "up";
+        } else {
+          candidate = cosH >= 0 ? "right" : "left";
+        }
+
+        if (!currentView) return candidate;
+        if (candidate === currentView) return currentView;
+
+        // Hysteresis: only switch if the new candidate is meaningfully
+        // stronger than the current view's axis.
+        const isCurrentVertical   = (currentView === "down" || currentView === "up");
+        const isCandidateVertical = (candidate    === "down" || candidate    === "up");
+        if (isCurrentVertical === isCandidateVertical) {
+          // Same axis (e.g. left↔right). Switching directions feels right
+          // when the motion crosses zero — no hysteresis needed.
+          return candidate;
+        }
+        // Axis flip (e.g. right → up). Require a margin.
+        const dominant   = Math.max(verticalStrength, horizontalStrength);
+        const subordinate = Math.min(verticalStrength, horizontalStrength);
+        if (dominant - subordinate > VIEW_SWITCH_HYSTERESIS) return candidate;
+        return currentView;
+      }
+
+      function spawnCrowd() {
+        people.length = 0;
+        const n = P.count;
+        for (let i = 0; i < n; i++) people.push(makePerson(true));
+      }
+
+      // Lighter helper: only used when switching INTO cross mode at runtime
+      // — we don't want all people teleporting, just spawning new edge
+      // travellers as the existing ones leave the screen naturally.
+      function respawnIfCross() { /* hook reserved for future tuning */ }
+
+      // ---------------------------------------------------------------------
+      // Helpers
+      // ---------------------------------------------------------------------
+      const TAU = Math.PI * 2;
+      function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+      function wrapAngle(a) {
+        while (a >  Math.PI) a -= TAU;
+        while (a < -Math.PI) a += TAU;
+        return a;
+      }
+      function lerp(a, b, t) { return a + (b - a) * t; }
+
+      // ---------------------------------------------------------------------
+      // Ground rendering — a single pre-baked tile we wrap across the canvas.
+      // Themed per `P.ground` so the crowd can be auditioned over different
+      // surfaces (plaza stone, dirt path, grass, dark void for a clean
+      // technical look).
+      // ---------------------------------------------------------------------
+      const groundCanvases = {};
+      function buildGround(theme) {
+        const c = document.createElement("canvas");
+        c.width = 256; c.height = 256;
+        const g = c.getContext("2d");
+
+        let base, fleckA, fleckB, fleckN;
+        if (theme === "plaza")      { base = "#5a4630"; fleckA = "rgba(200,170,120,0.18)"; fleckB = "rgba(40,28,18,0.30)";  fleckN = 1400; }
+        else if (theme === "dirt")  { base = "#4a3622"; fleckA = "rgba(170,130,80,0.20)";  fleckB = "rgba(20,12,6,0.32)";   fleckN = 1700; }
+        else if (theme === "grass") { base = "#2d4a23"; fleckA = "rgba(120,170,90,0.22)";  fleckB = "rgba(20,40,15,0.30)";  fleckN = 2200; }
+        else                        { base = "#13110d"; fleckA = "rgba(60,55,45,0.20)";    fleckB = "rgba(0,0,0,0)";         fleckN = 300;  }
+
+        g.fillStyle = base;
+        g.fillRect(0, 0, 256, 256);
+        for (let i = 0; i < fleckN; i++) {
+          g.fillStyle = (Math.random() < 0.5) ? fleckA : fleckB;
+          const x = Math.random() * 256;
+          const y = Math.random() * 256;
+          const s = 0.6 + Math.random() * 1.8;
+          g.fillRect(x, y, s, s);
+        }
+        return c;
+      }
+      function getGround() {
+        if (!groundCanvases[P.ground]) groundCanvases[P.ground] = buildGround(P.ground);
+        return groundCanvases[P.ground];
+      }
+
+      // ---------------------------------------------------------------------
+      // AI — pick targets, steer heading, advance walk phase
+      // ---------------------------------------------------------------------
+      function updatePerson(p, dt, t) {
+        // Pick a destination based on the active mode
+        if (P.mode === "follow") {
+          p.target.x = mouse.x;
+          p.target.y = mouse.y;
+        } else if (P.mode === "circle") {
+          const cx = W * 0.5, cy = H * 0.5;
+          const R = Math.min(W, H) * 0.30;
+          const a = t * 0.15 + p.circleOffset;
+          p.target.x = cx + Math.cos(a) * R;
+          p.target.y = cy + Math.sin(a) * R;
+        } else if (P.mode === "wander") {
+          p.nextRetarget -= dt;
+          const dx = p.target.x - p.x;
+          const dy = p.target.y - p.y;
+          if (p.nextRetarget <= 0 || (dx * dx + dy * dy) < 40 * 40) {
+            const margin = Math.min(W, H) * 0.05;
+            p.target.x = margin + Math.random() * (W - margin * 2);
+            p.target.y = margin + Math.random() * (H - margin * 2);
+            p.nextRetarget = 2 + Math.random() * 5;
+          }
+        } else if (P.mode === "cross") {
+          // Pick a target on the OPPOSITE side from where they currently are.
+          // Once they exit, the bounds-check below will recycle them.
+          //
+          // Person was spawned with `_crossTargetSet=true` already if they
+          // came in via `makePerson(true)` while cross mode was active. This
+          // path only fires for existing wander-mode citizens that the user
+          // just switched into cross mode.
+          if (!p._crossTargetSet) {
+            const farMargin = 80;
+            const distL = p.x, distR = W - p.x, distT = p.y, distB = H - p.y;
+            const minD = Math.min(distL, distR, distT, distB);
+            if (minD === distL || minD === distR) {
+              p.target.x = (minD === distL) ? W + farMargin : -farMargin;
+              p.target.y = Math.random() * H;
+            } else {
+              p.target.x = Math.random() * W;
+              p.target.y = (minD === distT) ? H + farMargin : -farMargin;
+            }
+            // Snap heading to face the target so the PD controller doesn't
+            // have to spin them around mid-flow.
+            p.heading = Math.atan2(p.target.y - p.y, p.target.x - p.x);
+            p.angularVel = 0;
+            p._crossTargetSet = true;
+          }
+        } else if (P.mode === "static") {
+          p.target.x = p.x; p.target.y = p.y;
+        }
+
+        // Steering — PD controller on heading like the fish playground
+        let movingForward = true;
+        if (P.mode !== "static") {
+          const m = 30;
+          let tx = p.target.x, ty = p.target.y;
+          if (P.mode !== "cross") {
+            // Soft edge avoidance: pull the destination inward when close
+            // to the canvas border. Skip this in "cross" mode because the
+            // whole point is to walk OFF the screen.
+            const cx = W * 0.5, cy = H * 0.5;
+            const edgeD = Math.min(p.x, W - p.x, p.y, H - p.y);
+            if (edgeD < m) {
+              const blend = 1 - edgeD / m;
+              tx = lerp(tx, cx, blend * 0.85);
+              ty = lerp(ty, cy, blend * 0.85);
+            }
+          }
+
+          const desired = Math.atan2(ty - p.y, tx - p.x);
+          const err = wrapAngle(desired - p.heading);
+          const kP = 4.0;
+          const maxAng = P.turn;
+          const desiredAng = clamp(err * kP, -maxAng, maxAng);
+          const tauAng = 0.25;
+          const aBlend = 1 - Math.exp(-dt / tauAng);
+          p.angularVel += (desiredAng - p.angularVel) * aBlend;
+          p.heading += p.angularVel * dt;
+
+          const fwd = P.speed * p.speedMul;
+          p.x += Math.cos(p.heading) * fwd * dt;
+          p.y += Math.sin(p.heading) * fwd * dt;
+
+          // Update which 4-direction sprite this person should use, based
+          // on their current heading. Hysteresis inside the picker keeps
+          // the view stable near threshold angles.
+          p.view = pickViewFromHeading(p.heading, p.view);
+
+          // Recycle out-of-bounds travellers
+          const outM = 60;
+          if (P.mode === "cross") {
+            if (p.x < -outM || p.x > W + outM || p.y < -outM || p.y > H + outM) {
+              // Respawn at a random edge with a fresh cross-target
+              Object.assign(p, makePerson(true));
+            }
+          } else {
+            // For non-cross modes, hard-clamp inside the canvas
+            const hardM = 4;
+            if (p.x < hardM) p.x = hardM;
+            if (p.x > W - hardM) p.x = W - hardM;
+            if (p.y < hardM) p.y = hardM;
+            if (p.y > H - hardM) p.y = H - hardM;
+          }
+        } else {
+          // Static: relax angular velocity so any in-flight turn unwinds
+          p.angularVel *= Math.exp(-dt / 0.3);
+          movingForward = false;
+        }
+
+        // Walk phase — advance proportional to cadence and a speed factor
+        // so walking faster ⇒ stepping faster, and standing still ⇒ tiny
+        // idle bob (with a low floor so the silhouette feels alive).
+        const fwd = P.speed * p.speedMul;
+        const speedFactor = movingForward ? clamp(fwd / 50, 0.2, 2.5) : 0.18;
+        const stepHz = P.cadence * p.cadenceMul * speedFactor;
+        p.phase += TAU * stepHz * dt;
+      }
+
+      // ---------------------------------------------------------------------
+      // Draw one person via slice-wave walk deformation.
+      //
+      // Geometry of a walk:
+      //   • bob       — torso/head rise & fall (2 bobs per stride cycle)
+      //   • sway      — side-to-side body weight transfer (1 / cycle)
+      //   • leg swing — front/back leg motion (bottom strips shift x)
+      //   • squash    — Y compression on foot-plant (twice per cycle)
+      //   • lean      — small forward shear into walking direction
+      //   • head      — tiny counter-sway to balance the torso shift
+      //
+      // The same parameter set drives every person; per-person variance
+      // comes from `phase`, `cadenceMul`, `speedMul`, and `sizeMul`.
+      // ---------------------------------------------------------------------
+      function drawPerson(ctx, p, t) {
+        const setBakes = variants[p.setIdx];
+        if (!setBakes) return;
+        const viewKey = p.view || "down";
+        // Per-view hue list; if a view didn't load, fall back to any other
+        // view in the same set so we still draw something.
+        let viewRow = setBakes[viewKey];
+        if (!viewRow || !viewRow.length) {
+          for (const v of VIEW_KEYS) {
+            if (setBakes[v] && setBakes[v].length) { viewRow = setBakes[v]; break; }
+          }
+        }
+        if (!viewRow || !viewRow.length) return;
+        const hairCount = Math.max(1, Math.min(P.hairColors, HAIR_PALETTE.length));
+        const paletteIdx = p.hueIdx * hairCount + (p.hairIdx || 0);
+        const sprite = viewRow[Math.min(paletteIdx, viewRow.length - 1)];
+        if (!sprite) return;
+
+        const srcW = sprite.width;
+        const srcH = sprite.height;
+        const sizeY = P.size * p.sizeMul;
+        const sizeX = sizeY * (srcW / srcH);
+
+        // Each view sprite is already in its natural orientation, so no
+        // flipping is needed. However, the horizontal "lean" inside the
+        // slice-wave walk must still point in the direction of motion. For
+        // a left-facing sprite walking left, that's screen -X; for a
+        // right-facing sprite walking right, screen +X. Front/back views
+        // have no meaningful horizontal lean.
+        const isVertical = (viewKey === "down" || viewKey === "up");
+        const cosHmotion = Math.cos(p.heading);
+        const leanDir = isVertical
+          ? 0
+          : (Math.abs(cosHmotion) < 0.05 ? 0 : Math.sign(cosHmotion));
+
+        // For front/back views the legs are visible "into the page" rather
+        // than as a side stride, so a strong horizontal leg swing reads
+        // wrong (looks like the character is flapping their legs sideways).
+        // Damp horizontal motion for these views but keep some hip wobble
+        // so the silhouette still feels alive.
+        const horizDamp = isVertical ? 0.25 : 1.0;
+
+        // Phase-derived motion knobs.
+        // - sin(phase)     : one period per FULL stride (left foot ↔ right foot)
+        // - sin(2 * phase) : two periods per stride (one per foot-plant)
+        const ph  = p.phase;
+        const s1  = Math.sin(ph);
+        const c1  = Math.cos(ph);
+        const s2  = Math.sin(ph * 2);
+
+        // Bob: up when feet are mid-air, down when planting. We invert so
+        // the body is LOWEST at foot-plant (negative Y dip).
+        const bobY = -Math.abs(s2) * P.bob;
+
+        // Squash: triggered on each foot-plant. Coupled to the same s2 wave.
+        const squashY = 1 - Math.max(0, -s2) * P.squash;
+
+        // Lean: only when actively walking. leanDir carries the sign so a
+        // left-facing walker leans toward screen-left and vice-versa.
+        const movingMag = Math.min(1, (P.speed * p.speedMul) / 30);
+        const leanX = P.lean * movingMag * leanDir;
+
+        const N = Math.max(2, P.slices | 0);
+        const hipLine = clamp(P.hipLine, 0.05, 0.98);
+
+        ctx.save();
+        ctx.translate(p.x, p.y + bobY);
+        // Foot-plant squash centered on the feet, not the middle.
+        // Translate down by half-height, scale Y, translate back up.
+        if (Math.abs(1 - squashY) > 0.0005) {
+          ctx.translate(0, sizeY * 0.5);
+          ctx.scale(1, squashY);
+          ctx.translate(0, -sizeY * 0.5);
+        }
+
+        // Disable smoothing for pixelated look if requested
+        const prevSmooth = ctx.imageSmoothingEnabled;
+        ctx.imageSmoothingEnabled = !P.pixelate;
+        ctx.imageSmoothingQuality = "low";
+
+        // Drop shadow under the feet — drawn first so the person sits ON
+        // it. No flip needed here; the shadow ellipse is symmetric and
+        // the parent transform has no horizontal flip in the new system.
+        if (P.shadow > 0.001) {
+          ctx.fillStyle = `rgba(0, 0, 0, ${P.shadow * 0.55})`;
+          ctx.beginPath();
+          ctx.ellipse(0, sizeY * 0.46, sizeX * 0.36, sizeY * 0.08, 0, 0, TAU);
+          ctx.fill();
+        }
+
+        // ---- Slice-wave walk -------------------------------------------
+        // We slice the sprite into N horizontal strips. For each strip we
+        // compute a horizontal offset dx that depends on its vertical
+        // position u in [0,1] (0=top of head, 1=feet):
+        //
+        //   above hip line  : torso sway (s1)  + head counter-sway near top
+        //   below hip line  : leg swing (s1)  growing toward the feet
+        //   universal       : a small lean term scaled by (0.5 - u)
+        // ----------------------------------------------------------------
+        // Horizontal motion gets damped for front/back views so legs don't
+        // visibly flap sideways from those angles.
+        const swayAmp     = P.sway     * horizDamp;
+        const headSwayAmp = P.headSway * horizDamp;
+        const legAmp      = P.leg      * horizDamp;
+
+        const sliceH = sizeY / N;
+        const srcSliceH = srcH / N;
+        const overlap = 0.5;
+
+        for (let i = 0; i < N; i++) {
+          const u = i / (N - 1);
+
+          let dx;
+          if (u <= hipLine) {
+            // Torso & head region. Torso sways one way; the top of the
+            // head counter-sways gently (life sign).
+            const torsoBlend = 1 - (u / hipLine);          // 1 at head, 0 at hip
+            const torso = s1 * swayAmp * (0.5 + 0.5 * torsoBlend);
+            const headT = clamp((hipLine * 0.5 - u) / (hipLine * 0.5 + 0.0001), 0, 1);
+            const head  = -s1 * headSwayAmp * headT;
+            dx = torso + head;
+          } else {
+            // Leg region. The lower the strip, the bigger the swing.
+            const legFrac = (u - hipLine) / (1 - hipLine);  // 0 at hip, 1 at toes
+            dx = s1 * legAmp * legFrac;
+            // Tiny opposite hip lift to keep weight transfer feeling right.
+            dx += c1 * swayAmp * 0.10 * legFrac;
+          }
+          // Forward lean: top of the body leads, feet trail. (0.5 - u)
+          // gives +ve at head, -ve at feet.
+          dx += leanX * (0.5 - u) * sizeY;
+
+          const sy = i * srcSliceH;
+          const dy = -sizeY * 0.5 + i * sliceH;
+
+          ctx.drawImage(
+            sprite,
+            0,
+            Math.max(0, sy - overlap),
+            srcW,
+            Math.min(srcH - Math.max(0, sy - overlap), srcSliceH + overlap * 2),
+            -sizeX * 0.5 + dx,
+            dy - overlap,
+            sizeX,
+            sliceH + overlap * 2
+          );
+        }
+
+        // Optional debug ring around each person's feet
+        if (P.debug) {
+          ctx.strokeStyle = "rgba(255, 220, 120, 0.65)";
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.ellipse(0, sizeY * 0.46, sizeX * 0.36, sizeY * 0.08, 0, 0, TAU);
+          ctx.stroke();
+        }
+
+        ctx.imageSmoothingEnabled = prevSmooth;
+        ctx.restore();
+
+        // Direction arrow in WORLD space — drawn outside the local body
+        // frame so it shows the TRUE motion direction. Sanity check that
+        // the chosen view sprite agrees with the heading.
+        if (P.debug) {
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.heading);
+          const arrowLen = sizeX * 0.55;
+          ctx.strokeStyle = "rgba(120, 220, 255, 0.95)";
+          ctx.fillStyle   = "rgba(120, 220, 255, 0.95)";
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(0, sizeY * 0.42);
+          ctx.lineTo(arrowLen, sizeY * 0.42);
+          ctx.stroke();
+          // Arrowhead
+          ctx.beginPath();
+          ctx.moveTo(arrowLen,            sizeY * 0.42);
+          ctx.lineTo(arrowLen - 5,        sizeY * 0.42 - 3);
+          ctx.lineTo(arrowLen - 5,        sizeY * 0.42 + 3);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      // ---------------------------------------------------------------------
+      // Frame loop
+      // ---------------------------------------------------------------------
+      let last = performance.now();
+      let t = 0;
+      let fpsAvg = 60;
+      const fpsEl = document.getElementById("stat");
+
+      // Persistent y-sort index — re-used each frame to avoid garbage
+      // (sorting 1000+ entries every frame would otherwise allocate hard).
+      let sortIdx = new Int32Array(0);
+      function ensureSortIdx(n) {
+        if (sortIdx.length < n) sortIdx = new Int32Array(n);
+      }
+
+      function frame(now) {
+        const dtRaw = Math.min(0.05, (now - last) / 1000);
+        const dt = P.paused ? 0 : dtRaw;
+        last = now;
+        t += dt;
+
+        const inst = 1 / Math.max(0.0001, dtRaw);
+        fpsAvg = fpsAvg * 0.92 + inst * 0.08;
+        // Total pre-baked canvases = sum over each set of (views × hues).
+        let variantCount = 0;
+        for (const setBakes of variants) {
+          for (const view of VIEW_KEYS) {
+            if (setBakes[view]) variantCount += setBakes[view].length;
+          }
+        }
+        fpsEl.textContent = `${fpsAvg.toFixed(0)} fps · ${people.length} people · ${variantCount} pre-baked variants · ${P.slices} slices`;
+
+        // Adjust crowd size if slider value changed without a release event.
+        if (people.length !== P.count) {
+          if (people.length < P.count) {
+            const add = P.count - people.length;
+            for (let i = 0; i < add; i++) people.push(makePerson(true));
+          } else {
+            people.length = P.count;
+          }
+        }
+
+        // Ground
+        const g = getGround();
+        const gw = g.width, gh = g.height;
+        // Tile by drawing a few large pattern strips. We bypass createPattern
+        // to keep DPR transforms clean and to make the dim-light feel cheap.
+        const cols = Math.ceil(W / gw) + 1;
+        const rows = Math.ceil(H / gh) + 1;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            ctx.drawImage(g, c * gw, r * gh);
+          }
+        }
+
+        // Subtle vignette over the ground for depth
+        const grad = ctx.createRadialGradient(W * 0.5, H * 0.5, Math.min(W, H) * 0.15, W * 0.5, H * 0.5, Math.max(W, H) * 0.65);
+        grad.addColorStop(0, "rgba(0,0,0,0)");
+        grad.addColorStop(1, "rgba(0,0,0,0.55)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+
+        // AI tick — also tags `_crossTargetSet` on cross-mode entrants
+        for (let i = 0; i < people.length; i++) {
+          if (P.mode !== "cross" && people[i]._crossTargetSet) {
+            people[i]._crossTargetSet = false;
+          }
+          updatePerson(people[i], dt, t);
+        }
+
+        // Y-sort (depth order) — lower screen-Y draws first so people in
+        // front overlap people behind. Without this you get jarring
+        // z-fighting between adjacent walkers.
+        ensureSortIdx(people.length);
+        const ordered = sortIdx.subarray(0, people.length);
+        for (let i = 0; i < people.length; i++) ordered[i] = i;
+        if (P.ysort) {
+          // Insertion sort on the index buffer — Array.prototype.sort with a
+          // comparator allocates. For typical N (≤2000) and near-sorted data
+          // an in-place quicksort would be ideal, but the native sort on
+          // typed arrays is already quite fast and avoids comparator
+          // boxing, so we use it on a temporary Array copy only when N is
+          // small enough to not matter.
+          const arr = Array.from(ordered);
+          arr.sort((a, b) => people[a].y - people[b].y);
+          for (let i = 0; i < arr.length; i++) ordered[i] = arr[i];
+        }
+
+        for (let i = 0; i < ordered.length; i++) {
+          drawPerson(ctx, people[ordered[i]], t);
+        }
+
+        // Direction test card — only shown when isolation mode is active.
+        // Four ghost figures (down/up/right/left) labelled with the matching
+        // arrow. If any figure doesn't look like it's facing its arrow, the
+        // CHARACTER_SETS entry for that view is wrong.
+        if (P.isolateBase >= 0 && P.isolateBase < CHARACTER_SETS.length) {
+          drawDirectionTestCard(ctx, P.isolateBase, t);
+        }
+
+        requestAnimationFrame(frame);
+      }
+
+      // ---------------------------------------------------------------------
+      // Direction test card
+      //
+      // Side-by-side reference for the four cardinal views of one character
+      // set. Drawn from the same baked variants the main renderer uses, so
+      // a mis-assigned view sprite jumps out immediately.
+      // ---------------------------------------------------------------------
+      function drawDirectionTestCard(ctx, setIdx, t) {
+        const setBakes = variants[setIdx];
+        if (!setBakes) return;
+
+        // Pick a reference sprite per view (first hue) and skip views that
+        // didn't load.
+        const views = VIEW_KEYS.map(v => {
+          const row = setBakes[v];
+          return row && row[0] ? { view: v, sprite: row[0] } : null;
+        }).filter(Boolean);
+        if (!views.length) return;
+
+        // The figures vary in aspect (front/back vs side); pick a uniform
+        // height and let widths fluctuate.
+        const figureH = 110;
+        const cardPad = 16;
+        const slotGap = 22;
+
+        // Pre-compute widths so we can size the card to fit.
+        const figureWs = views.map(v =>
+          figureH * (v.sprite.width / v.sprite.height));
+        const totalFigureW = figureWs.reduce((a, b) => a + b, 0) + slotGap * (views.length - 1);
+        const cardW = Math.min(
+          Math.max(380, totalFigureW + cardPad * 2),
+          Math.max(280, W - 340 - 32) // leave clearance for the right panel
+        );
+        const cardH = figureH + 86;
+        const panelW = 340;
+        const topGap = 70;
+        const visibleW = Math.max(280, W - panelW);
+        const cx = visibleW * 0.5;
+        const cardX = cx - cardW * 0.5;
+        const cardY = topGap;
+
+        // Background card (rounded rect, same look as before)
+        ctx.save();
+        ctx.fillStyle   = "rgba(0, 0, 0, 0.55)";
+        ctx.strokeStyle = "rgba(255, 184, 107, 0.45)";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        const r = 12;
+        ctx.moveTo(cardX + r, cardY);
+        ctx.arcTo(cardX + cardW, cardY,         cardX + cardW, cardY + cardH, r);
+        ctx.arcTo(cardX + cardW, cardY + cardH, cardX,         cardY + cardH, r);
+        ctx.arcTo(cardX,         cardY + cardH, cardX,         cardY,         r);
+        ctx.arcTo(cardX,         cardY,         cardX + cardW, cardY,         r);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Header
+        const setName = CHARACTER_SETS[setIdx].name || ("character #" + setIdx);
+        ctx.font = "600 12px Inter, system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "rgba(255, 184, 107, 0.95)";
+        ctx.fillText(
+          "DIRECTION TEST · " + setName + " · arrows show motion direction",
+          cx, cardY + 22);
+
+        // Lay out the figures evenly across the card.
+        const slotY  = cardY + 36 + figureH * 0.5;
+        const innerW = cardW - cardPad * 2;
+        let cursor = cardX + cardPad;
+        if (totalFigureW < innerW) {
+          // extra room — center the row
+          cursor += (innerW - totalFigureW) * 0.5;
+        }
+
+        for (let i = 0; i < views.length; i++) {
+          const v       = views[i];
+          const figW    = figureWs[i];
+          const slotX   = cursor + figW * 0.5;
+          cursor += figW + slotGap;
+
+          // Draw sprite
+          ctx.save();
+          ctx.translate(slotX, slotY);
+          ctx.imageSmoothingEnabled = !P.pixelate;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(v.sprite, -figW * 0.5, -figureH * 0.5, figW, figureH);
+          ctx.restore();
+
+          // Arrow showing intended motion direction. For up/down, draw a
+          // vertical arrow; for left/right, a horizontal arrow.
+          const arrowY = slotY + figureH * 0.5 + 14;
+          ctx.save();
+          ctx.strokeStyle = "rgba(120, 220, 255, 0.95)";
+          ctx.fillStyle   = "rgba(120, 220, 255, 0.95)";
+          ctx.lineWidth = 2;
+          const aLen = 30;
+          if (v.view === "right" || v.view === "left") {
+            const dir = v.view === "right" ? 1 : -1;
+            const tipX = slotX + aLen * 0.5 * dir;
+            ctx.beginPath();
+            ctx.moveTo(slotX - aLen * 0.5 * dir, arrowY);
+            ctx.lineTo(tipX,                     arrowY);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(tipX,            arrowY);
+            ctx.lineTo(tipX - 7 * dir,  arrowY + 4);
+            ctx.lineTo(tipX - 7 * dir,  arrowY - 4);
+            ctx.closePath();
+            ctx.fill();
+          } else {
+            const dir = v.view === "down" ? 1 : -1;
+            const tipY = arrowY + aLen * 0.5 * dir;
+            ctx.beginPath();
+            ctx.moveTo(slotX, arrowY - aLen * 0.5 * dir);
+            ctx.lineTo(slotX, tipY);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(slotX,     tipY);
+            ctx.lineTo(slotX + 4, tipY - 7 * dir);
+            ctx.lineTo(slotX - 4, tipY - 7 * dir);
+            ctx.closePath();
+            ctx.fill();
+          }
+          ctx.restore();
+
+          // Caption
+          ctx.fillStyle = "rgba(230, 243, 255, 0.85)";
+          ctx.font = "600 11px Inter, system-ui, sans-serif";
+          ctx.fillText(v.view, slotX, arrowY + 24);
+        }
+
+        ctx.restore();
+      }
+
+      loadAllSprites();
+      requestAnimationFrame(frame);
+    })();
+    </script>
+  </body>
+</html>

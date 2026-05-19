@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+._*
+
+# editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# node (in case someone uses npx serve)
+node_modules/
+.npm/
+
+# logs
+*.log
+
+# build artifacts
+.vite/
+dist/
+build/
