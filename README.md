@@ -4,6 +4,8 @@ A zero-dependency, single-file playground that simulates **hundreds to thousands
 of pedestrians** on an HTML `<canvas>` with a procedural walk cycle (no
 spritesheets, no skeletons, no shaders).
 
+![Crowds System playground — 200 pedestrians wandering on a warm-stone plaza](docs/preview.png)
+
 The trick: every person is a **pre-tinted, sliced quad** drawn with simple 2D
 context calls — the slices wobble, sway, lean and squash per-frame so a single
 4-direction sprite reads as a full walk animation. The same approach ports 1:1
@@ -108,3 +110,11 @@ on next load.
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
+
+## Author
+
+Made by **Ibrahim Boona**.
+
+- X / Twitter: [@boona11](https://x.com/boona11)
+- Instagram: [@boona11](https://instagram.com/boona11)
+- GitHub: [@boona13](https://github.com/boona13)
